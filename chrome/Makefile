@@ -13,10 +13,10 @@ get-version:
 	@echo $(VERSION)
 
 build:
-	@docker build --tag neuralegion/nextools-chrome --tag 454884832027.dkr.ecr.us-east-1.amazonaws.com/nextools-chrome --build-arg VERSION=$(VERSION) $(CURRENT_DIR)
+	@docker build --tag brightsec/nextools-chrome --tag 454884832027.dkr.ecr.us-east-1.amazonaws.com/nextools-chrome --build-arg VERSION=$(VERSION) $(CURRENT_DIR)
 
 test:
-	@docker run --detach --publish 9222:9222 --name nextools-chrome neuralegion/nextools-chrome
+	@docker run --detach --publish 9222:9222 --name nextools-chrome brightsec/nextools-chrome
 	@timeout 20s sh -c "trap 'docker container rm --force nextools-chrome' 0; until curl http://localhost:9222/json/version; do sleep 1; done"
 
 tags:
@@ -27,6 +27,6 @@ tags:
 			tag=latest; \
 		fi; \
 		echo $$tag; \
-		docker tag nextools-chrome neuralegion/nextools-chrome:$$tag; \
+		docker tag nextools-chrome brightsec/nextools-chrome:$$tag; \
 		git tag --force nextools-chrome@$$tag; \
 	done
