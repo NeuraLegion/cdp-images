@@ -45,7 +45,7 @@ jobs:
         run: make --file ${{ matrix.package }}/Makefile build version=${{ steps.get_version.outputs.result }}
 
       - name: Login into Docker
-        run: docker login --username=anatol1988 --password=${{ secrets.DOCKER_TOKEN }}
+        run: docker login --username=${{ vars.DOCKERHUB_BRIGHT_USER }} --password=${{ secrets.DOCKERHUB_BRIGHT_TOKEN }}
 
       - name: Push image to Docker
         run: docker push neuralegion/nextools-${{ matrix.package }}
