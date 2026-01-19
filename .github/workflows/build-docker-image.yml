@@ -57,6 +57,7 @@ jobs:
         run: docker push 454884832027.dkr.ecr.us-east-1.amazonaws.com/nextools-${{ matrix.package }}
 
       - name: Sign image with Cosign
+        shell: bash
         env:
           REGISTRY_ENDPOINT: 454884832027.dkr.ecr.us-east-1.amazonaws.com/nextools-${{ matrix.package }}
         run: |
@@ -72,6 +73,7 @@ jobs:
           fi
 
       - name: Verify signature
+        shell: bash
         run: |
           if [[ -z "${IMAGE_DIGEST}" ]]; then
             echo "::error::IMAGE_DIGEST not set"
