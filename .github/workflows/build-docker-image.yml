@@ -37,6 +37,9 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@59acb6260d9c0ba8f4a2f9d9b48431a222b68e20 # v3.5.0
+
       - name: Get version
         id: get_version
         run: echo ::set-output name=result::$(make --file ${{ matrix.package }}/Makefile get-version)
@@ -53,3 +56,31 @@ jobs:
       - name: Push Docker image to AWS ECR
         run: docker push 454884832027.dkr.ecr.us-east-1.amazonaws.com/nextools-${{ matrix.package }}
 
+      - name: Sign image with Cosign
+        env:
+          REGISTRY_ENDPOINT: 454884832027.dkr.ecr.us-east-1.amazonaws.com/nextools-${{ matrix.package }}
+        run: |
+          DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "${REGISTRY_ENDPOINT}:latest" | cut -d'@' -f2)
+          if [[ -z "$DIGEST" || ! "$DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+            echo "::error::Failed to extract valid digest from pushed image"
+            exit 1
+          fi
+          echo "IMAGE_DIGEST=${REGISTRY_ENDPOINT}@${DIGEST}" >> $GITHUB_ENV
+          if ! cosign sign --yes "${REGISTRY_ENDPOINT}@${DIGEST}"; then
+            echo "::error::Failed to sign image. Check OIDC token availability, ECR permissions, and network connectivity."
+            exit 1
+          fi
+
+      - name: Verify signature
+        run: |
+          if [[ -z "${IMAGE_DIGEST}" ]]; then
+            echo "::error::IMAGE_DIGEST not set"
+            exit 1
+          fi
+          if ! cosign verify \
+            --certificate-identity-regexp="^https://github.com/NeuraLegion/[^/]+/.+$" \
+            --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
+            "${IMAGE_DIGEST}"; then
+            echo "::error::Signature verification failed. The image may not have been signed correctly."
+            exit 1
+          fi
