@@ -1,4 +1,4 @@
-FROM chromedp/headless-shell:stable
+FROM chromedp/headless-shell:139.0.7258.155
 
 ENV RD_PORT=9222
 
