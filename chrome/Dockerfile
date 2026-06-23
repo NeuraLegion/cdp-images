@@ -1,4 +1,6 @@
-FROM chromedp/headless-shell:139.0.7258.155
+# chromedp/headless-shell v139.0.7258.155
+# TODO: Fork upstream repo or mirror to internal registry before production use (security review required)
+FROM chromedp/headless-shell@sha256:ab3598f600417861066c8e1002ef355423b97b3365e3b8f5cf36c12ebc9f3637
 
 ENV RD_PORT=9222
 

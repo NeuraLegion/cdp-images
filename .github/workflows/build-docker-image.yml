@@ -10,17 +10,22 @@ on:
 
 jobs:
   build-chrome:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     permissions:
       id-token: write
       contents: read
 
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            platform: linux/amd64
+          - runner: ubuntu-24.04-arm
+            platform: linux/arm64
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -35,10 +40,42 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@v4.0.0
+      - name: Login into Docker Hub
+        uses: docker/login-action@v3
         with:
-          cosign-release: 'v3.0.4'
+          username: ${{ vars.DOCKERHUB_BRIGHT_USER }}
+          password: ${{ secrets.DOCKERHUB_BRIGHT_TOKEN }}
+
+      - name: Build and push chrome (per-platform)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./chrome
+          platforms: ${{ matrix.platform }}
+          push: true
+          tags: |
+            brightsec/nextools-chrome:${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}
+            454884832027.dkr.ecr.us-east-1.amazonaws.com/nextools-chrome:${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}
+
+  merge-chrome-manifest:
+    runs-on: ubuntu-latest
+    needs: build-chrome
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ vars.AWS_DEFAULT_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
 
       - name: Login into Docker Hub
         uses: docker/login-action@v3
@@ -46,41 +83,45 @@ jobs:
           username: ${{ vars.DOCKERHUB_BRIGHT_USER }}
           password: ${{ secrets.DOCKERHUB_BRIGHT_TOKEN }}
 
-      - name: Build and push chrome (multi-arch)
-        uses: docker/build-push-action@v6
+      - name: Create and push manifest list (Docker Hub)
+        run: |
+          docker buildx imagetools create \
+            --tag brightsec/nextools-chrome:latest \
+            brightsec/nextools-chrome:amd64 \
+            brightsec/nextools-chrome:arm64
+
+      - name: Create and push manifest list (ECR)
+        run: |
+          docker buildx imagetools create \
+            --tag 454884832027.dkr.ecr.us-east-1.amazonaws.com/nextools-chrome:latest \
+            454884832027.dkr.ecr.us-east-1.amazonaws.com/nextools-chrome:amd64 \
+            454884832027.dkr.ecr.us-east-1.amazonaws.com/nextools-chrome:arm64
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v4.0.0
         with:
-          context: ./chrome
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: |
-            brightsec/nextools-chrome:latest
-            454884832027.dkr.ecr.us-east-1.amazonaws.com/nextools-chrome:latest
+          cosign-release: 'v3.0.4'
 
       - name: Get image digest
         id: get_digest
-        shell: bash
         run: |
+          set -e
           DIGEST=$(docker buildx imagetools inspect "454884832027.dkr.ecr.us-east-1.amazonaws.com/nextools-chrome:latest" --format '{{.Manifest.Digest}}')
+          if [[ -z "$DIGEST" || ! "$DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+            echo "::error::Failed to extract valid digest"
+            exit 1
+          fi
           echo "IMAGE_DIGEST=454884832027.dkr.ecr.us-east-1.amazonaws.com/nextools-chrome@${DIGEST}" >> $GITHUB_ENV
 
       - name: Sign image with Cosign
-        shell: bash
-        run: |
-          if ! cosign sign --yes "${IMAGE_DIGEST}"; then
-            echo "::error::Failed to sign image."
-            exit 1
-          fi
+        run: cosign sign --yes "${IMAGE_DIGEST}"
 
       - name: Verify signature
-        shell: bash
         run: |
-          if ! cosign verify \
+          cosign verify \
             --certificate-identity-regexp="^https://github.com/NeuraLegion/[^/]+/.+$" \
             --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-            "${IMAGE_DIGEST}"; then
-            echo "::error::Signature verification failed."
-            exit 1
-          fi
+            "${IMAGE_DIGEST}"
 
   build-legacy:
     runs-on: ubuntu-latest
@@ -131,7 +172,6 @@ jobs:
         run: docker push 454884832027.dkr.ecr.us-east-1.amazonaws.com/nextools-${{ matrix.package }}
 
       - name: Sign image with Cosign
-        shell: bash
         env:
           REGISTRY_ENDPOINT: 454884832027.dkr.ecr.us-east-1.amazonaws.com/nextools-${{ matrix.package }}
         run: |
@@ -140,7 +180,6 @@ jobs:
           cosign sign --yes "${REGISTRY_ENDPOINT}@${DIGEST}"
 
       - name: Verify signature
-        shell: bash
         run: |
           cosign verify \
             --certificate-identity-regexp="^https://github.com/NeuraLegion/[^/]+/.+$" \
