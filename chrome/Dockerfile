@@ -7,7 +7,7 @@ ENV RD_PORT=9222
 # Install socat (required for port forwarding)
 USER root
 RUN apt-get update -y && \
-    apt-get install -y --no-install-recommends socat && \
+    apt-get install -y --no-install-recommends socat curl && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 RUN groupadd -r chrome 2>/dev/null || true && \

@@ -6,8 +6,7 @@ fi
 
 RD_PORT="${RD_PORT:=9222}"
 
-ip=$(hostname --ip-address)
-socat tcp-listen:$RD_PORT,bind="$ip",fork tcp:127.0.0.1:$RD_PORT &
+socat tcp-listen:$RD_PORT,reuseaddr,fork tcp:127.0.0.1:$(($RD_PORT + 1)) &
 
 (ulimit -n 65000 || true) && (ulimit -p 65000 || true) && exec /headless-shell/headless-shell \
   --enable-automation \
@@ -60,7 +59,7 @@ socat tcp-listen:$RD_PORT,bind="$ip",fork tcp:127.0.0.1:$RD_PORT &
   --no-sandbox \
   --no-default-browser-check \
   --remote-debugging-address=127.0.0.1 \
-  --remote-debugging-port="$RD_PORT" \
+  --remote-debugging-port="$(($RD_PORT + 1))" \
   --user-data-dir=/home/chrome/ \
   --window-size=1920,1080 \
   --window-position=0,0 \
