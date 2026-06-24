@@ -1,21 +1,27 @@
-# chromedp/headless-shell v139.0.7258.155
-# TODO: Fork upstream repo or mirror to internal registry before production use (security review required)
-FROM chromedp/headless-shell@sha256:ab3598f600417861066c8e1002ef355423b97b3365e3b8f5cf36c12ebc9f3637
+FROM ubuntu:latest
 
+ARG VERSION
+ARG DEBIAN_FRONTEND=noninteractive
+ENV DBUS_SESSION_BUS_ADDRESS disabled:
 ENV RD_PORT=9222
 
-# Install socat (required for port forwarding)
-USER root
-RUN apt-get update -y && \
-    apt-get install -y --no-install-recommends socat && \
-    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+RUN apt-get update -y
+RUN apt-get install wget unzip socat apt-utils -y --no-install-recommends
+RUN wget -q --no-check-certificate https://storage.googleapis.com/chrome-for-testing-public/${VERSION}/linux64/chrome-headless-shell-linux64.zip
+RUN unzip chrome-headless-shell-linux64.zip
+RUN rm chrome-headless-shell-linux64.zip
 
-RUN groupadd -r chrome 2>/dev/null || true && \
-    useradd --create-home -rm -g chrome -G audio,video chrome 2>/dev/null || true
+RUN cat chrome-headless-shell-linux64/deb.deps | while read pkg ; do apt-get satisfy -y --no-install-recommends "${pkg}"; done
+RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+RUN mv chrome-headless-shell-linux64 /headless-shell
+RUN chmod +x /headless-shell/chrome-headless-shell
+RUN groupadd -r chrome && useradd --create-home -rm -g chrome -G audio,video chrome
 
 WORKDIR /home/chrome
 
 COPY --chown=chrome:chrome entrypoint.sh /home/chrome/
 
 USER chrome
+ENV PATH /headless-shell:$PATH
 ENTRYPOINT ["/bin/sh", "/home/chrome/entrypoint.sh"]
