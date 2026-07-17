@@ -1,6 +1,6 @@
 #!/bin/sh
 
-if [ "$(ls -A /home/chrome/.fonts/)" ]; then
+if [ -d /home/chrome/.fonts ] && [ "$(ls -A /home/chrome/.fonts/)" ]; then
   fc-cache -f -v
 fi
 
@@ -9,11 +9,12 @@ RD_PORT="${RD_PORT:=9222}"
 ip=$(hostname --ip-address)
 socat tcp-listen:$RD_PORT,bind="$ip",fork tcp:127.0.0.1:$RD_PORT &
 
-(ulimit -n 65000 || true) && (ulimit -p 65000 || true) && exec chrome-headless-shell \
+(ulimit -n 65000 || true) && (ulimit -p 65000 || true) && exec /usr/bin/chromium \
+  --headless=new \
   --enable-automation \
   --silent-debugger-extension-api \
   --allow-pre-commit-input \
-  --ash-no-nudges \
+  --disable-gpu \
   --disable-gpu-process-crash-limit \
   --disable-background-networking \
   --disable-background-timer-throttling \
@@ -41,7 +42,6 @@ socat tcp-listen:$RD_PORT,bind="$ip",fork tcp:127.0.0.1:$RD_PORT &
   --disable-hang-monitor \
   --disable-ipc-flooding-protection \
   --disable-component-update \
-  --headless=old \
   --export-tagged-pdf \
   --force-color-profile=srgb \
   --no-zygote \
