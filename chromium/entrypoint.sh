@@ -6,8 +6,7 @@ fi
 
 RD_PORT="${RD_PORT:=9222}"
 
-ip=$(hostname --ip-address)
-socat tcp-listen:$RD_PORT,bind="$ip",fork tcp:127.0.0.1:$RD_PORT &
+socat tcp-listen:$RD_PORT,bind=0.0.0.0,fork tcp:127.0.0.1:$RD_PORT &
 
 (ulimit -n 65000 || true) && (ulimit -p 65000 || true) && exec /usr/bin/chromium \
   --headless=new \
