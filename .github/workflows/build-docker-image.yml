@@ -6,10 +6,44 @@ on:
   push:
     branches:
       - master
+  pull_request:
+    branches:
+      - master
   workflow_dispatch:
 
 jobs:
+  # Build-only on PRs (no push, no sign)
+  validate-chrome:
+    if: github.event_name == 'pull_request'
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            platform: linux/amd64
+          - runner: ubuntu-24.04-arm
+            platform: linux/arm64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build chrome (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./chrome
+          platforms: ${{ matrix.platform }}
+          push: false
+
+  # Push to registries on master only
   build-chrome:
+    if: github.event_name != 'pull_request'
     runs-on: ${{ matrix.runner }}
     permissions:
       id-token: write
