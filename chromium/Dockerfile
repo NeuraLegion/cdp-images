@@ -7,6 +7,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         chromium=150.0.7871.124-1~deb12u1 \
         dumb-init \
+        socat \
         fontconfig \
         fonts-liberation \
         procps \

@@ -6,6 +6,11 @@ fi
 
 RD_PORT="${RD_PORT:=9222}"
 
+# Chromium only binds to 127.0.0.1 regardless of --remote-debugging-address.
+# Socat exposes CDP on all interfaces so it's reachable from other containers
+# (bridge network, k8s pod-to-pod, docker-compose services).
+socat tcp-listen:$RD_PORT,bind=0.0.0.0,reuseaddr,fork tcp:127.0.0.1:$((RD_PORT + 1)) &
+
 (ulimit -n 65000 || true) && (ulimit -p 65000 || true) && exec /usr/bin/chromium \
   --headless=new \
   --enable-automation \
@@ -57,8 +62,8 @@ RD_PORT="${RD_PORT:=9222}"
   --no-first-run \
   --no-sandbox \
   --no-default-browser-check \
-  --remote-debugging-address=0.0.0.0 \
-  --remote-debugging-port="$RD_PORT" \
+  --remote-debugging-address=127.0.0.1 \
+  --remote-debugging-port="$((RD_PORT + 1))" \
   --user-data-dir=/home/chrome/ \
   --window-size=1920,1080 \
   --window-position=0,0 \
