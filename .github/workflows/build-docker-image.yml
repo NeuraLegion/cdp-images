@@ -209,6 +209,7 @@ jobs:
         run: docker push 454884832027.dkr.ecr.us-east-1.amazonaws.com/nextools-${{ matrix.package }}
 
       - name: Sign image with Cosign
+        shell: bash
         env:
           REGISTRY_ENDPOINT: 454884832027.dkr.ecr.us-east-1.amazonaws.com/nextools-${{ matrix.package }}
         run: |
@@ -221,6 +222,7 @@ jobs:
           cosign sign --yes "${REGISTRY_ENDPOINT}@${DIGEST}"
 
       - name: Verify signature
+        shell: bash
         run: |
           cosign verify \
             --certificate-identity-regexp="^https://github.com/NeuraLegion/[^/]+/.+$" \
