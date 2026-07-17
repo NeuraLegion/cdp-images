@@ -1,11 +1,27 @@
-# Images
+# CDP Images
 
-Monorepo of Docker images auto-published to [Docker Hub](https://hub.docker.com/repositories/neuralegion).
- <!-- and [GitHub Packages](https://help.github.com/en/packages/using-github-packages-with-your-projects-ecosystem/configuring-docker-for-use-with-github-packages). -->
+Docker image for headless Chromium, published to [Docker Hub](https://hub.docker.com/r/brightsec/nextools-chrome) and AWS ECR.
 
-<!-- ## GitHub Packages
+## Image
 
-This is fantastic but [you have to login to GitHub Packages with Docker even to pull images](https://github.community/t5/GitHub-Actions/docker-pull-from-public-GitHub-Package-Registry-fail-with-quot/td-p/32782):
+`brightsec/nextools-chrome` - Multi-arch (amd64 + arm64) headless Chromium for CDP automation.
 
-1. Generate a personal access token [here](https://github.com/settings/tokens) with `read:packages` scope
-2. Login with `docker login docker.pkg.github.com -u <GITHUB_USERNAME>` using the token instead of a password -->
+- Base: `debian:bookworm-slim`
+- Browser: Chromium from Debian apt (pinned version)
+- Mode: `--headless=new`
+- Port: 9222 (CDP)
+
+## Usage
+
+```bash
+docker run -d -p 9222:9222 brightsec/nextools-chrome
+curl http://localhost:9222/json/version
+```
+
+## Build locally
+
+```bash
+cd chromium
+make build-local
+make test
+```

@@ -1,29 +1,22 @@
-FROM ubuntu:bionic
+FROM debian:bookworm-slim
 
-ARG VERSION
 ARG DEBIAN_FRONTEND=noninteractive
 ENV RD_PORT=9222
 
-RUN apt-get update \
-    # https://github.com/phusion/baseimage-docker/issues/319
-    && apt-get install --yes apt-utils 2>&1 | grep -v "debconf: delaying package configuration, since apt-utils is not installed" \
-    && apt-get install --no-install-recommends --yes \
-        htop \
-        net-tools \
-        dumb-init \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        chromium=150.0.7871.124-1~deb12u1 \
+        socat \
         fontconfig \
-        chromium-browser=${VERSION}\* \
-        curl \
-    && rm -rf /var/lib/apt/lists/*
+        fonts-liberation \
+        procps \
+    && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-RUN groupadd chromium
-RUN useradd --create-home --gid chromium chromium
-RUN chown --recursive chromium:chromium /home/chromium/
+RUN groupadd -r chrome && useradd --create-home -rm -g chrome -G audio,video chrome
 
-VOLUME ["/home/chromium/.fonts"]
+WORKDIR /home/chrome
 
-COPY --chown=chromium:chromium entrypoint.sh /home/chromium/
+COPY --chown=chrome:chrome entrypoint.sh /home/chrome/
 
-USER chromium
-
-ENTRYPOINT ["dumb-init", "--", "/bin/sh", "/home/chromium/entrypoint.sh"]
+USER chrome
+ENTRYPOINT ["/bin/sh", "/home/chrome/entrypoint.sh"]

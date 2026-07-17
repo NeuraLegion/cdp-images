@@ -1,28 +1,19 @@
-.PHONY: get-version build test tags
+.PHONY: get-version build build-local test
 
 CURRENT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
+IMAGE_NAME:=brightsec/nextools-chrome
+ECR_IMAGE:=454884832027.dkr.ecr.us-east-1.amazonaws.com/nextools-chrome
 
 get-version:
-	@docker pull ubuntu:bionic > /dev/null 2>&1
-	@docker run --rm \
-		ubuntu:bionic \
-		sh -c "apt-get update --quiet=2 && apt-cache policy chromium-browser | sed --regexp-extended --quiet 's/.*Candidate: ([0-9.]+)-.+/\1/p'"
+	@docker run --rm debian:bookworm-slim sh -c \
+		"apt-get update -qq 2>/dev/null && apt-cache policy chromium 2>/dev/null | sed -n 's/.*Candidate: \(.*\)/\1/p'"
 
 build:
-	@docker build --tag brightsec/nextools-chromium --tag 454884832027.dkr.ecr.us-east-1.amazonaws.com/nextools-chromium --build-arg VERSION=$(version) $(CURRENT_DIR)
+	@docker build --tag $(IMAGE_NAME) --tag $(ECR_IMAGE) $(CURRENT_DIR)
+
+build-local:
+	@docker build --tag $(IMAGE_NAME) $(CURRENT_DIR)
 
 test:
-	@docker run --detach --publish 9222:9222 --name nextools-chromium brightsec/nextools-chromium
-	@timeout 20s sh -c "trap 'docker container rm --force nextools-chromium' 0; until curl http://localhost:9222/json/version; do sleep 1; done"
-
-tags:
-	@for i in 3 2 1 0 -1; do \
-		if [ $$i -ge 0 ]; then \
-			tag=`echo $(version) | sed --regexp-extended "s/(\.[0-9]+){$$i}$$//"`; \
-		else \
-			tag=latest; \
-		fi; \
-		echo $$tag; \
-		docker tag nextools-chromium brightsec/nextools-chromium:$$tag; \
-		git tag --force nextools-chromium@$$tag; \
-	done
+	@docker run --detach --publish 9222:9222 --name nextools-chrome $(IMAGE_NAME)
+	@timeout 20s sh -c "trap 'docker container rm --force nextools-chrome' 0; until curl -s http://localhost:9222/json/version; do sleep 1; done"
