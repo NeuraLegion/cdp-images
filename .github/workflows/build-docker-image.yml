@@ -16,6 +16,7 @@ jobs:
   validate-chrome:
     if: github.event_name == 'pull_request'
     runs-on: ${{ matrix.runner }}
+    name: validate-chrome (${{ matrix.arch }})
     permissions:
       contents: read
 
@@ -24,8 +25,10 @@ jobs:
         include:
           - runner: ubuntu-latest
             platform: linux/amd64
+            arch: amd64
           - runner: ubuntu-24.04-arm
             platform: linux/arm64
+            arch: arm64
 
     steps:
       - name: Checkout
@@ -157,6 +160,7 @@ jobs:
             "${IMAGE_DIGEST}"
 
   build-legacy:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       id-token: write
