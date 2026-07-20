@@ -8,6 +8,7 @@ RUN apt-get update && \
         chromium=150.0.7871.124-1~deb12u1 \
         dumb-init \
         socat \
+        wget \
         fontconfig \
         fonts-liberation \
         procps \
