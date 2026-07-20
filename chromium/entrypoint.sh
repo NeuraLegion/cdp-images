@@ -1,6 +1,6 @@
 #!/bin/sh
 
-if [ -d /home/chrome/.fonts ] && [ "$(ls -A /home/chrome/.fonts/)" ]; then
+if [ -d /home/chromium/.fonts ] && [ "$(ls -A /home/chromium/.fonts/)" ]; then
   fc-cache -f -v
 fi
 
@@ -64,7 +64,7 @@ socat tcp-listen:$RD_PORT,bind=0.0.0.0,reuseaddr,fork tcp:127.0.0.1:$((RD_PORT +
   --no-default-browser-check \
   --remote-debugging-address=127.0.0.1 \
   --remote-debugging-port="$((RD_PORT + 1))" \
-  --user-data-dir=/home/chrome/ \
+  --user-data-dir=/home/chromium/ \
   --window-size=1920,1080 \
   --window-position=0,0 \
   "$@"

@@ -13,11 +13,11 @@ RUN apt-get update && \
         procps \
     && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-RUN groupadd -r chrome && useradd --create-home -rm -g chrome -G audio,video chrome
+RUN groupadd -r chromium && useradd --create-home -rm -g chromium -G audio,video chromium
 
-WORKDIR /home/chrome
+WORKDIR /home/chromium
 
-COPY --chown=chrome:chrome entrypoint.sh /home/chrome/
+COPY --chown=chromium:chromium entrypoint.sh /home/chromium/
 
-USER chrome
-ENTRYPOINT ["dumb-init", "--", "/bin/sh", "/home/chrome/entrypoint.sh"]
+USER chromium
+ENTRYPOINT ["dumb-init", "--", "/bin/sh", "/home/chromium/entrypoint.sh"]
