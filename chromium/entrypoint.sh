@@ -5,14 +5,14 @@ if [ -d /home/chromium/.fonts ] && [ "$(ls -A /home/chromium/.fonts/)" ]; then
 fi
 
 RD_PORT="${RD_PORT:=9222}"
+INTERNAL_PORT=$((RD_PORT + 1))
 
-# Chromium only binds to 127.0.0.1 regardless of --remote-debugging-address.
-# Socat exposes CDP on all interfaces so it's reachable from other containers
-# (bridge network, k8s pod-to-pod, docker-compose services).
-socat tcp-listen:$RD_PORT,bind=0.0.0.0,reuseaddr,fork tcp:127.0.0.1:$((RD_PORT + 1)) &
+# chromium-headless-shell only binds to 127.0.0.1 regardless of
+# --remote-debugging-address. Socat exposes CDP on all interfaces
+# for bridge network, k8s pod-to-pod, and docker-compose services.
+socat tcp-listen:$RD_PORT,bind=0.0.0.0,reuseaddr,fork tcp:127.0.0.1:$INTERNAL_PORT &
 
-(ulimit -n 65000 || true) && (ulimit -p 65000 || true) && exec /usr/bin/chromium \
-  --headless=new \
+(ulimit -n 65000 || true) && (ulimit -p 65000 || true) && exec /usr/bin/chromium-headless-shell \
   --enable-automation \
   --silent-debugger-extension-api \
   --allow-pre-commit-input \
@@ -50,7 +50,7 @@ socat tcp-listen:$RD_PORT,bind=0.0.0.0,reuseaddr,fork tcp:127.0.0.1:$((RD_PORT +
   --start-maximized \
   --password-store=basic \
   --use-mock-keychain \
-  --disable-features=Translate,AcceptCHFrame,MediaRouter,OptimizationHints,ProcessPerSiteUpToMainFrameThreshold,ImprovedCookieControls,FaviconFetching \
+  --disable-features=Translate,AcceptCHFrame,MediaRouter,OptimizationHints,ProcessPerSiteUpToMainFrameThreshold,ImprovedCookieControls \
   --enable-features=NetworkServiceInProcess2 \
   --hide-scrollbars \
   --ignore-certificate-errors \
@@ -63,7 +63,7 @@ socat tcp-listen:$RD_PORT,bind=0.0.0.0,reuseaddr,fork tcp:127.0.0.1:$((RD_PORT +
   --no-sandbox \
   --no-default-browser-check \
   --remote-debugging-address=127.0.0.1 \
-  --remote-debugging-port="$((RD_PORT + 1))" \
+  --remote-debugging-port="$INTERNAL_PORT" \
   --user-data-dir=/home/chromium/ \
   --window-size=1920,1080 \
   --window-position=0,0 \
