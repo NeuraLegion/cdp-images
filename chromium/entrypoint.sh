@@ -50,7 +50,7 @@ socat tcp-listen:$RD_PORT,bind=0.0.0.0,reuseaddr,fork tcp:127.0.0.1:$((RD_PORT +
   --start-maximized \
   --password-store=basic \
   --use-mock-keychain \
-  --disable-features=Translate,AcceptCHFrame,MediaRouter,OptimizationHints,ProcessPerSiteUpToMainFrameThreshold,ImprovedCookieControls \
+  --disable-features=Translate,AcceptCHFrame,MediaRouter,OptimizationHints,ProcessPerSiteUpToMainFrameThreshold,ImprovedCookieControls,FaviconFetching \
   --enable-features=NetworkServiceInProcess2 \
   --hide-scrollbars \
   --ignore-certificate-errors \
