@@ -1,0 +1,65 @@
+name: Auto version bump
+
+on:
+  schedule:
+    - cron: "0 0 * * 6"
+  workflow_dispatch:
+
+jobs:
+  check-and-bump:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get current pinned version
+        id: current
+        run: |
+          VERSION=$(grep -oP 'chromium-headless-shell=\K[^\s\\]+' chromium/Dockerfile)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Current pinned version: $VERSION"
+
+      - name: Get latest available version
+        id: latest
+        run: |
+          MAIN_VER=$(curl -s "https://deb.debian.org/debian/dists/bookworm/main/binary-amd64/Packages.xz" \
+            | xz -d | awk '/^Package: chromium-headless-shell$/,/^$/' | grep "^Version:" | cut -d' ' -f2)
+          SEC_VER=$(curl -s "https://security.debian.org/debian-security/dists/bookworm-security/main/binary-amd64/Packages.xz" \
+            | xz -d | awk '/^Package: chromium-headless-shell$/,/^$/' | grep "^Version:" | cut -d' ' -f2)
+          VERSION=$(printf '%s\n' "$MAIN_VER" "$SEC_VER" | sort -V | tail -1)
+          if [ -z "$VERSION" ]; then
+            echo "::error::Failed to fetch chromium version from Debian repos"
+            exit 1
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Latest available version: $VERSION (main=$MAIN_VER, security=$SEC_VER)"
+
+      - name: Compare versions
+        id: compare
+        run: |
+          if [ "${{ steps.current.outputs.version }}" = "${{ steps.latest.outputs.version }}" ]; then
+            echo "Version unchanged, nothing to do"
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "Version changed: ${{ steps.current.outputs.version }} -> ${{ steps.latest.outputs.version }}"
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update Dockerfile
+        if: steps.compare.outputs.changed == 'true'
+        run: |
+          sed -i "s|chromium-headless-shell=${{ steps.current.outputs.version }}|chromium-headless-shell=${{ steps.latest.outputs.version }}|" chromium/Dockerfile
+          echo "Updated Dockerfile:"
+          grep "chromium-headless-shell" chromium/Dockerfile
+
+      - name: Commit and push
+        if: steps.compare.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add chromium/Dockerfile
+          git commit -m "chore: bump chromium-headless-shell to ${{ steps.latest.outputs.version }}"
+          git push
