@@ -5,11 +5,16 @@ on:
     - cron: "0 0 * * 6"
   workflow_dispatch:
 
+concurrency:
+  group: version-bump
+  cancel-in-progress: false
+
 jobs:
   check-and-bump:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: write
 
     steps:
       - name: Checkout
@@ -18,16 +23,22 @@ jobs:
       - name: Get current pinned version
         id: current
         run: |
+          set -euo pipefail
           VERSION=$(grep -oP 'chromium-headless-shell=\K[^\s\\]+' chromium/Dockerfile)
+          if [ -z "$VERSION" ]; then
+            echo "::error::Failed to parse pinned version from Dockerfile"
+            exit 1
+          fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Current pinned version: $VERSION"
 
       - name: Get latest available version
         id: latest
         run: |
-          MAIN_VER=$(curl -s "https://deb.debian.org/debian/dists/bookworm/main/binary-amd64/Packages.xz" \
+          set -euo pipefail
+          MAIN_VER=$(curl -fsSL "https://deb.debian.org/debian/dists/bookworm/main/binary-amd64/Packages.xz" \
             | xz -d | awk '/^Package: chromium-headless-shell$/,/^$/' | grep "^Version:" | cut -d' ' -f2)
-          SEC_VER=$(curl -s "https://security.debian.org/debian-security/dists/bookworm-security/main/binary-amd64/Packages.xz" \
+          SEC_VER=$(curl -fsSL "https://security.debian.org/debian-security/dists/bookworm-security/main/binary-amd64/Packages.xz" \
             | xz -d | awk '/^Package: chromium-headless-shell$/,/^$/' | grep "^Version:" | cut -d' ' -f2)
           VERSION=$(printf '%s\n' "$MAIN_VER" "$SEC_VER" | sort -V | tail -1)
           if [ -z "$VERSION" ]; then
@@ -63,3 +74,9 @@ jobs:
           git add chromium/Dockerfile
           git commit -m "chore: bump chromium-headless-shell to ${{ steps.latest.outputs.version }}"
           git push
+
+      - name: Trigger build workflow
+        if: steps.compare.outputs.changed == 'true'
+        run: gh workflow run build-docker-image.yml
+        env:
+          GH_TOKEN: ${{ github.token }}
