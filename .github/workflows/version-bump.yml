@@ -15,7 +15,6 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-      actions: write
 
     steps:
       - name: Checkout
@@ -70,7 +69,16 @@ jobs:
       - name: Create Pull Request
         if: steps.compare.outputs.changed == 'true'
         run: |
-          BRANCH="chore/bump-chromium-${{ steps.latest.outputs.version }}"
+          SAFE_VERSION=$(echo "${{ steps.latest.outputs.version }}" | sed 's/[~]/-/g')
+          BRANCH="chore/bump-chromium-${SAFE_VERSION}"
+
+          # Skip if PR already exists for this version
+          EXISTING=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number')
+          if [ -n "$EXISTING" ]; then
+            echo "PR #$EXISTING already exists for $BRANCH, skipping"
+            exit 0
+          fi
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH"
