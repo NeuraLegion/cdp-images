@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      actions: write
+      pull-requests: write
 
     steps:
       - name: Checkout
@@ -66,17 +66,33 @@ jobs:
           echo "Updated Dockerfile:"
           grep "chromium-headless-shell" chromium/Dockerfile
 
-      - name: Commit and push
+      - name: Create Pull Request
         if: steps.compare.outputs.changed == 'true'
         run: |
+          SAFE_VERSION=$(echo "${{ steps.latest.outputs.version }}" | sed 's/[~]/-/g')
+          BRANCH="chore/bump-chromium-${SAFE_VERSION}"
+
+          # Skip if PR already exists for this version
+          EXISTING=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number')
+          if [ -n "$EXISTING" ]; then
+            echo "PR #$EXISTING already exists for $BRANCH, skipping"
+            exit 0
+          fi
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
           git add chromium/Dockerfile
           git commit -m "chore: bump chromium-headless-shell to ${{ steps.latest.outputs.version }}"
-          git push
+          git push origin "$BRANCH"
+          gh pr create \
+            --title "chore: bump chromium-headless-shell to ${{ steps.latest.outputs.version }}" \
+            --body "Automated version bump by scheduled workflow.
 
-      - name: Trigger build workflow
-        if: steps.compare.outputs.changed == 'true'
-        run: gh workflow run build-docker-image.yml
+          **${{ steps.current.outputs.version }}** -> **${{ steps.latest.outputs.version }}**
+
+          Merge this PR to trigger a new image build." \
+            --base master \
+            --head "$BRANCH"
         env:
           GH_TOKEN: ${{ github.token }}

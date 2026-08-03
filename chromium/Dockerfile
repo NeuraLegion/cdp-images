@@ -5,7 +5,7 @@ ENV RD_PORT=9222
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        chromium-headless-shell=150.0.7871.181-1~deb12u1 \
+        chromium-headless-shell=151.0.7922.71-1~deb12u1 \
         dumb-init \
         socat \
         wget \
