@@ -67,4 +67,5 @@ socat tcp-listen:$RD_PORT,bind=0.0.0.0,reuseaddr,fork tcp:127.0.0.1:$INTERNAL_PO
   --user-data-dir=/home/chromium/ \
   --window-size=1920,1080 \
   --window-position=0,0 \
+  --log-level=2 \
   "$@"
