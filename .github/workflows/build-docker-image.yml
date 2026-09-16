@@ -153,6 +153,6 @@ jobs:
       - name: Verify signature
         run: |
           cosign verify \
-            --certificate-identity-regexp="^https://github.com/NeuraLegion/[^/]+/.+$" \
+            --certificate-identity-regexp="^https://github.com/brightsec/[^/]+/.+$" \
             --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
             "${IMAGE_DIGEST}"
